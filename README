@@ -1,0 +1,14 @@
+
+
+Files:
+------
+
+lowdisp_dict_learn.m: contains the algorithm that learns low dictionaries with low displacement rank
+
+
+DEMO:
+-----
+
+DEMO_Image_Denoising: This is the main script. Run it. The first time you run it, you will be asked to download two required packages (ompbox and ksvdbox), make sure you have an internet connection at this point. After the installations, rerun the script.
+
+image_denoise.m: Auxiliary function called by the 'DEMO_Image_Denoising' script. After the packages intallation, this file will be automatically moved to the 'toolbox/ksvdbox' folder.
