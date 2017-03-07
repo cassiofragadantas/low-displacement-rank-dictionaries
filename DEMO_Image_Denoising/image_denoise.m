@@ -7,15 +7,15 @@ function [y,D,D_not_normalized, nz] = image_denoise(params,msgdelta)
 %      representations over Learned Dictionaries", the IEEE Trans. on Image
 %      Processing, Vol. 15, no. 12, pp. 3736-3745, December 2006.
 %
-% The the dictionary learning algorithm is exchanged by the low displacement
+% The dictionary learning algorithm is exchanged by the low displacement
 % rank dictionary learning technique (lowdisp_dict_learn.m)
 %
 %  [2] C. Dantas and R.R. Lopoes, "Low Displacement Rank Dictionary 
 %      Learning"
 
 %  [Y,D] = IMAGE_DENOISE(PARAMS) denoises the specified (possibly
-%  multi-dimensional) signal using K-SVD denoising. Y is the denoised
-%  signal and D is the trained dictionary produced by K-SVD.
+%  multi-dimensional) signal. Y is the denoised signal and D is
+%  the trained dictionary.
 %
 %  [Y,D] = IMAGE_DENOISE(PARAMS,MSGDELTA) specifies the frequency of message
 %  printing during the process. MSGDELTA should be a positive number

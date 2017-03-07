@@ -1,9 +1,151 @@
 function [D,D_structured,X] = lowdisp_dict_learn(params)
+%Low displacement rank dictionary training.
+%  [D,D_structured,X] = lowdisp_dict_learn(params) runs the dictionary 
+%  training algorithm on the specified set of signals (as a field of the 
+%  input variable 'params'), returning the trained dictionary 'D', its
+%  low displacement rank version before column normalization 'D_structured'
+%  and the sparse signal representation matrix 'X'.
+%
+%  The training algorithm considers performs an alternate minimization on
+%  the variables 'D' (dictionary update step) and 'X' (sparse coding step).
+%
+%  1) Dictionary update step
+%     Considers the following optimization problem
+%
+%         min  |Y-D*X|_F^2 + lambda*rank(D - A*D*B)
+%         D
+%
+%     where the operator matrices depend on the chosen type of structure
+%     (Toeplitz-like or Hankel-like).
+%
+%  2) Sparse coding step
+%     Two modes of operation for the sparse reconstruction step are
+%     available:
+%
+%     - Sparsity-based minimization, the optimization problem is given by
+%
+%         min  |Y-D*X|_F^2      s.t.  |X_i|_0 <= T
+%         D,X
+%
+%       where Y is the set of training signals, X_i is the i-th column of
+%       X, and T is the target sparsity. 
+%  
+%     - Error-based minimization, the optimization problem is given by
+%
+%         min  |X|_0      s.t.  |Y_i - D*X_i|_2 <= EPSILON
+%         D,X
+%
+%       where Y_i is the i-th training signal, EPSILON is the target error.
+%
+%  --------------------------
+%
+%  The input arguments organization in this code is based on the K-SVD code
+%  available at:  http://www.cs.technion.ac.il/~ronrubin/software.html
+%  References:
+%  [1] M. Aharon, M. Elad, and A.M. Bruckstein, "The K-SVD: An Algorithm
+%      for Designing of Overcomplete Dictionaries for Sparse
+%      Representation", the IEEE Trans. On Signal Processing, Vol. 54, no.
+%      11, pp. 4311-4322, November 2006.
+%  [2] M. Elad, R. Rubinstein, and M. Zibulevsky, "Efficient Implementation
+%      of the K-SVD Algorithm using Batch Orthogonal Matching Pursuit",
+%      Technical Report - CS, Technion, April 2008.
+%
+%  Required fields in PARAMS:
+%  --------------------------
+%
+%    'data' - Training data.
+%      A matrix containing the training signals as its columns.
+%
+%    'Tdata' / 'Edata' - Sparse coding target.
+%      Specifies the number of coefficients (Tdata) or the target error in
+%      L2-norm (Edata) for coding each signal. If only one is present, that
+%      value is used. If both are present, Tdata is used, unless the field
+%      'codemode' is specified (below).
+%
+%    'initdict' - Specifies the initial dictionary for the training. It
+%      should be a matrix of size nxm, where n=size(data,1).
+%
+%
+%  Optional fields in PARAMS:
+%  --------------------------
+%
+%    'iternum' - Number of training iterations.
+%      If not specified, the default is 10.
+%
+%    'alpha' - Controls the penalization on the displacement rank.
+%      It determines the regularization parameter lambda as follows:
+%      
+%        lambda = params.alpha*norm(Y);
+%
+%    'memusage' - Memory usage.
+%      This parameter controls memory usage of the function. 'memusage'
+%      should be one of the strings 'high', 'normal' (default) or 'low'.
+%      When set to 'high', the fastest implementation of OMP is used, which
+%      involves precomputing both G=D'*D and DtX=D'*X. This increasese
+%      speed but also requires a significant amount of memory. When set to
+%      'normal', only the matrix G is precomputed, which requires much less
+%      memory but slightly decreases performance. Finally, when set to
+%      'low', neither matrix is precomputed. This should only be used when
+%      the trained dictionary is highly redundant and memory resources are
+%      very low, as this will dramatically increase runtime. See function
+%      OMP for more details.
+%
+%    'codemode' - Sparse-coding target mode.
+%      Specifies whether the 'Tdata' or 'Edata' fields should be used for
+%      the sparse-coding stopping criterion. This is useful when both
+%      fields are present in PARAMS. 'codemode' should be one of the
+%      strings 'sparsity' or 'error'. If it is not present, and both fields
+%      are specified, sparsity-based coding takes place.
+%
+%
+%  Optional fields in PARAMS - advanced:
+%  -------------------------------------
+%
+%    'maxatoms' - Maximal number of atoms in signal representation.
+%      When error-based sparse coding is used, this parameter can be used
+%      to specify a hard limit on the number of atoms in each signal
+%      representation (see parameter 'maxatoms' in OMP2 for more details).
+%
+%
+%   Summary of all fields in PARAMS:
+%   --------------------------------
+%
+%   Required:
+%     'data'                   training data
+%     'Tdata' / 'Edata'        sparse-coding target
+%     'initdict'               initial dictionary / dictionary size
+%
+%   Optional (default values in parentheses):
+%     'iternum'                number of training iterations (10)
+%     'memusage'               'low, 'normal' or 'high' ('normal')
+%     'codemode'               'sparsity' or 'error' ('sparsity')
+%     'maxatoms'               max # of atoms in error sparse-coding (none)
+%
+%
+%  Reference:
+%  [1] C.F. Dantas, R.R. Lopes, "Learning Low Displacement Rank 
+%      Dictionaries", To appear.
 
-% D_structured : before column normalization
 
-D = params.initdict;
-Y = params.data;
+
+%% Required parameters
+
+if (isfield(params,'initdict'))
+    D = params.initdict;
+else
+    error('Initial dictionary should be provided in field params.initdict');
+end
+
+if (isfield(params,'data'))
+    Y = params.data;
+else
+    error('Training data should be provided in field params.data');
+end
+
+
+if (size(Y,2) < size(D,2))
+  error('Number of training signals is smaller than number of atoms to train');
+end
 
 %% Parameter setting
 
@@ -150,7 +292,7 @@ lambda = params.alpha*norm(Y);
 
 %% Ajuste automatico para step size
 step = 1e-10/norm(D);
-u = 1e-10;
+u = 1e7;
 
 found = false;
 
@@ -165,12 +307,14 @@ while ~found
     svp = length(find(diagS > lambda/u));
     temp_dispD = U(:, 1:svp) * diag(diagS(1:svp) - lambda/u) * V(:, 1:svp)';
     % Min D_hat
-    grad1 = D_hat - F1*D_hat*F2 - temp_dispD - Z + F1'*(temp_dispD - D_hat + F1*D_hat*F2 + Z)*F2';
-    grad2 = (D_hat*X - Y)*X.';
-    norm1 = norm(step*(u*grad1 + grad2), 'fro');
-    D_hat = D_hat - step*(u*grad1 + grad2);
-    grad1 = D_hat - F1*D_hat*F2 - temp_dispD - Z + F1'*(temp_dispD - D_hat + F1*D_hat*F2 + Z)*F2';
-    grad2 = (D_hat*X - Y)*X.';
+    for k = 1:12
+        grad1 = D_hat - F1*D_hat*F2 - temp_dispD - Z + F1'*(temp_dispD - D_hat + F1*D_hat*F2 + Z)*F2';
+        grad2 = (D_hat*X - Y)*X.'; 
+        if k == 10
+            norm1 = norm(step*(u*grad1 + grad2), 'fro');
+        end
+        D_hat = D_hat - step*(u*grad1 + grad2);
+    end
     norm2 = norm(step*(u*grad1 + grad2), 'fro');
 
     if norm2 < norm1 % Converges
@@ -192,17 +336,12 @@ while ~found
     if exist('lbound','var') && exist('rbound','var') 
         if (rbound - lbound)/lbound < 1e-6
             found = true;
-            if params.sigma > 50
-                step = step/4;
-            else
-                step = step/3*(size(Y,2)/40000);
-            end
+            step = step/4;
         end
     end
     iter = iter + 1;
 end
-
-u = 1e7;
+fprintf('Step-size: %2.2E\n',step)
 
 %% Alternating Optimization
 success = false;
