@@ -1,20 +1,42 @@
 function DEMO_image_denoise
-%KSVDDENOISEDEMO K-SVD denoising demonstration.
-%  KSVDDENISEDEMO reads an image, adds random white noise and denoises it
-%  using K-SVD denoising. The input and output PSNR are compared, and the
+% This DEMO is based on the image denoising demo available at the KSVDBOX
+% package. 
+%
+%  Reference:
+%  [1] M. Elad and M. Aharon, "Image Denoising via Sparse and Redundant
+%      representations over Learned Dictionaries", the IEEE Trans. on Image
+%      Processing, Vol. 15, no. 12, pp. 3736-3745, December 2006.
+%
+% The dictionary learning algorithm is exchanged by the low displacement
+% rank dictionary learning technique (lowdisp_dict_learn.m)
+%
+%  [2] C. Dantas and R.R. Lopoes, "Low Displacement Rank Dictionary 
+%      Learning"
+
+%  DEMO_image_denoise reads an image, adds random white noise and denoises it
+%  The input and output PSNR are compared, and the
 %  trained dictionary is displayed.
 %
-%  To run the demo, type KSVDDENISEDEMO from the Matlab prompt.
+%  To run the demo, type DEMO_image_denoise from the Matlab prompt.
 %
-%  See also KSVDDEMO.
+%  See also image_denoise for the denoising algorithm.
 
 
+%  ORIGINAL DEMO BY:
 %  Ron Rubinstein
 %  Computer Science Department
 %  Technion, Haifa 32000 Israel
 %  ronrubin@cs
 %
 %  August 2009
+%
+%  ADAPTED BY:
+%  Cassio Fraga Dantas
+%  DSPCom Laboratory - Unicamp
+%  Campinas, Brasil
+%  cassio@decom.fee.unicamp.br
+%
+%  September 2016
 
 %% Downloading OMP and KSVD Toolboxes if necessary
 FS=filesep;

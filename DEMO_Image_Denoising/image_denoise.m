@@ -42,7 +42,7 @@ function [y,D,D_not_normalized, nz] = image_denoise(params,msgdelta)
 %      overlap between the blocks.
 %
 %    'dictsize' - Size of dictionary to train.
-%      Specifies the number of dictionary atoms to train by K-SVD.
+%      Specifies the number of dictionary atoms to train.
 %
 %    'psnr' / 'sigma' - Noise power.
 %      Specifies the noise power in dB (psnr) or the noise standard
@@ -54,14 +54,14 @@ function [y,D,D_not_normalized, nz] = image_denoise(params,msgdelta)
 %
 %    'trainnum' - Number of training blocks.
 %      Specifies the number of training blocks to extract from the noisy
-%      signal for K-SVD training.
+%      signal.
 %
 %
 %  Optional fields in PARAMS:
 %  --------------------------
 %
 %    'initdict' - Initial dictionary.
-%      Specifies the initial dictionary for the K-SVD training. Should be
+%      Specifies the initial dictionary. Should be
 %      either a matrix of size NxL where N=(N1*N2*...*Np), the string
 %      'odct' to specify the overcomplete DCT dictionary, or the string
 %      'data' to initialize using random signal blocks. When a matrix is
@@ -94,7 +94,7 @@ function [y,D,D_not_normalized, nz] = image_denoise(params,msgdelta)
 %    'memusage' - Memory usage.
 %      This parameter controls memory usage of the function. 'memusage'
 %      should be one of the strings 'high', 'normal' (default) or 'low'.
-%      When 'memusage' is specified, both KSVD and OMPDENOISE are invoked
+%      When 'memusage' is specified, OMPDENOISE is invoked
 %      using this memusage setting. Note that specifying 'low' will
 %      significantly increase runtime.
 %
@@ -128,13 +128,6 @@ function [y,D,D_not_normalized, nz] = image_denoise(params,msgdelta)
 %      prod(blocksize)/2, i.e. half the number of samples in a block. See
 %      function OMP2 for more information.
 %
-%    'exact' - Exact K-SVD update.
-%      Specifies whether the exact or approximate dictionary update should
-%      be used in the K-SVD training. By default, the approximate
-%      computation is used. However, specifying a nonzero value for 'exact'
-%      causes the exact computation to be used instead. See function KSVD
-%      for more information.
-%
 %
 %   Summary of all fields in PARAMS:
 %   --------------------------------
@@ -156,7 +149,6 @@ function [y,D,D_not_normalized, nz] = image_denoise(params,msgdelta)
 %     'gain'                   noise gain (1.15)
 %     'lambda'                 weight of input signal (0.1*maxval/sigma)
 %     'maxatoms'               max # of atoms per block (prod(blocksize)/2)
-%     'exact'                  exact update instead of approximate (0)
 %
 %
 %  References:
@@ -164,16 +156,24 @@ function [y,D,D_not_normalized, nz] = image_denoise(params,msgdelta)
 %      representations over Learned Dictionaries", the IEEE Trans. on Image
 %      Processing, Vol. 15, no. 12, pp. 3736-3745, December 2006.
 %
-%  See also KSVD, OMPDENOISE, OMP2.
+%  See also lowdisp_dict_learn, OMPDENOISE, OMP2.
 
 
+%  ORIGINAL DEMO BY:
 %  Ron Rubinstein
 %  Computer Science Department
 %  Technion, Haifa 32000 Israel
 %  ronrubin@cs
 %
 %  August 2009
-
+%
+%  ADAPTED BY:
+%  Cassio Fraga Dantas
+%  DSPCom Laboratory - Unicamp
+%  Campinas, Brasil
+%  cassio@decom.fee.unicamp.br
+%
+%  September 2016
 
 %%%%% parse input parameters %%%%%
 
